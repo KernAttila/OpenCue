@@ -719,7 +719,10 @@ class Machine(object):
         Update `__procs_by_physid_and_coreid` and `__physid_and_coreid_by_proc` mappings
         for Windows platforms.
 
-        Implementation detail.
+        Implementation detail:
+        For hybrid CPUs, Performance cores are hyper-threaded, Efficient cores are mono threaded.
+        For each processor, we map logical cores to their physical core.
+        This is then used in reserveHT() to book the proper number of cores for each frame.
         """
         import wmi  # Windows-specific
 
@@ -732,11 +735,16 @@ class Machine(object):
 
         # Retrieve CPU information using WMI
         for physicalId, processor in enumerate(wmiInstance.Win32_Processor()):
-
-            threadPerCore = processor.NumberOfLogicalProcessors // processor.NumberOfCores
+            pCores = processor.NumberOfLogicalProcessors - processor.NumberOfCores
+            eCores = processor.NumberOfLogicalProcessors - (pCores * 2)
+            print(f"Proc #{physicalId}: {pCores} hyper-threaded cores and {eCores} single cores")
             procId = 0
 
             for coreId in range(processor.NumberOfCores):
+                if coreId < pCores:
+                    threadPerCore = 2
+                else:
+                    threadPerCore = 1
                 for _ in range(threadPerCore):
                     self.__procs_by_physid_and_coreid.setdefault(
                         str(physicalId), {}
