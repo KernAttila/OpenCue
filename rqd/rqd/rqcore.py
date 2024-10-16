@@ -29,6 +29,7 @@ import platform
 import random
 import signal
 import subprocess
+import psutil
 import sys
 import tempfile
 import threading
@@ -355,6 +356,10 @@ class FrameAttendantThread(threading.Thread):
         """The steps required to handle a frame under windows"""
         frameInfo = self.frameInfo
         runFrame = self.runFrame
+        affinity = None
+        print(f"affinity: {runFrame.attributes['CPU_LIST']=}")
+        if 'CPU_LIST' in runFrame.attributes:
+            affinity = runFrame.attributes['CPU_LIST']
 
         self.__createEnvVariables()
         self.__writeHeader()
@@ -376,6 +381,11 @@ class FrameAttendantThread(threading.Thread):
                 ''.join(traceback.format_exception(*sys.exc_info())))
 
         frameInfo.pid = frameInfo.forkedCommand.pid
+
+        if affinity:
+            process = psutil.Process(frameInfo.forkedCommand.pid)
+            print(f"Setting CPU affinity to {affinity} for process {pid}")
+            process.cpu_affinity(affinity)
 
         if not self.rqCore.updateRssThread.is_alive():
             self.rqCore.updateRssThread = threading.Timer(rqd.rqconstants.RSS_UPDATE_INTERVAL,
