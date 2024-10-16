@@ -16,6 +16,11 @@ pylint==2.15.10;python_version>="3.7"
 pynput==1.7.6
 PyYAML==5.1
 six==1.16.0
+pywin; platform_system=="Windows" and python_version <= "3.7"
+pywin; platform_system=="Windows" and python_version >= "3.10"
+pywin32==228; platform_system=="Windows" and python_version == "3.8"
+pywin32==228; platform_system=="Windows" and python_version == "3.9"
+wmi==1.5.1; platform_system == "Windows"
 
 # Optional requirements
 # Sentry support for rqd
