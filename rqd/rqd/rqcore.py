@@ -359,7 +359,7 @@ class FrameAttendantThread(threading.Thread):
         affinity = None
         print(f"affinity: {runFrame.attributes['CPU_LIST']=}")
         if 'CPU_LIST' in runFrame.attributes:
-            affinity = runFrame.attributes['CPU_LIST']
+            affinity = runFrame.attributes['CPU_LIST'].split(',')
 
         self.__createEnvVariables()
         self.__writeHeader()
@@ -384,8 +384,8 @@ class FrameAttendantThread(threading.Thread):
 
         if affinity:
             process = psutil.Process(frameInfo.forkedCommand.pid)
-            print(f"Setting CPU affinity to {affinity} for process {pid}")
-            process.cpu_affinity(affinity)
+            print(f"Setting CPU affinity to {affinity} for process {frameInfo.forkedCommand.pid}")
+            process.cpu_affinity(map(int, affinity))
 
         if not self.rqCore.updateRssThread.is_alive():
             self.rqCore.updateRssThread = threading.Timer(rqd.rqconstants.RSS_UPDATE_INTERVAL,
