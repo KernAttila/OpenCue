@@ -84,11 +84,11 @@ class Machine(object):
 
         # A dictionary built from /proc/cpuinfo containing
         # { <physical id> : { <core_id> : set([<processor>, <processor>, ...]), ... }, ... }
-        self.__procs_by_physid_and_coreid = {}
+        self.__threadid_by_cpuid_and_coreid = {}
 
         # A reverse mapping of the above.
         # { <processor> : (<physical id>, <core_id>), ... }
-        self.__physid_and_coreid_by_proc = {}
+        self.__cpuid_and_coreid_by_threadid = {}
 
         if platform.system() == 'Linux':
             self.__vmstat = rqd.rqswap.VmStat()
@@ -641,71 +641,93 @@ class Machine(object):
         self.__renderHost.nimby_locked = self.__rqCore.nimby.locked
         self.__renderHost.state = self.state
 
-    def __initStatsFromWindows(self):
+    def __initStatsLinux(self, pathCpuInfo=None):
+        """Init machine stats for Linux platforms.
+        
+        @type  pathCpuInfo: str
+        @param pathCpuInfo: Path to a specific cpuinfo file
+        """
+        coreInfo = []
+        _count = {"cpus": set(), "cores": set(), "threads": set()}
+        # Reads static information from /proc/cpuinfo
+        with (open(pathCpuInfo or rqd.rqconstants.PATH_CPUINFO, "r",
+                  encoding='utf-8') as cpuinfoFile):
+            infoBlock = {}
+            for line in cpuinfoFile:
+                lineList = line.strip().replace("\t", "").split(": ")
+                # A normal entry added to the singleCore dictionary
+                if len(lineList) >= 2:
+                    infoBlock[lineList[0]] = lineList[1]
+                # An entry without data
+                elif len(lineList) == 1:
+                    infoBlock[lineList[0]] = ""
+                # The end of a processor block
+                elif lineList == ['']:
+                    cpu_id = infoBlock['physical id']
+                    physical_core_id = infoBlock['core id']
+                    logical_core_id = infoBlock['processor']
+                    _count["cpus"].add(cpu_id)
+                    _count["cores"].add(physical_core_id)
+                    _count["threads"].add(logical_core_id)
+                    coreInfo.append((cpu_id, physical_core_id, logical_core_id))
+                    infoBlock.clear()
+
+        self.__updateProcsMappings(coreInfo=coreInfo)
+
+        return len(_count["cpus"]), len(_count["cores"]), len(_count["threads"])
+
+    def __initStatsWindows(self):
         """Init machine stats for Windows platforms.
 
         @rtype:  tuple
         @return: A 3-items tuple containing:
-            - the number of logical cores
             - the number of physical processors
-            - the hyper-threading multiplier
-
-        Implementation detail.
+            - the number of logical cores
+            - the number of processors
         """
-        # Windows memory information
-        stat = self.getWindowsMemory()
-        TEMP_DEFAULT = 1048576
-        self.__renderHost.total_mcp = TEMP_DEFAULT
-        self.__renderHost.total_mem = int(stat.ullTotalPhys / 1024)
-        self.__renderHost.total_swap = int(stat.ullTotalPageFile / 1024)
+        import rqd.rqwinutils  # Windows-specific
 
         # Windows CPU information
-        self.__updateProcsMappingsFromWindows()
+        coreInfo = rqd.rqwinutils.get_logical_processor_information_ex()
+        self.__updateProcsMappings(coreInfo=coreInfo)
 
+        processorCount = len(self.__threadid_by_cpuid_and_coreid)
+        physicalCoreCount = psutil.cpu_count(logical=False)
         logicalCoreCount = psutil.cpu_count(logical=True)
 
-        return logicalCoreCount, physicalProcessorCount, hyperThreadingMultiplier
+        return processorCount, physicalCoreCount, logicalCoreCount
 
-    def __updateProcsMappingsFromWindows(self):
+    def __updateProcsMappings(self, coreInfo):
         """
-        Update `__procs_by_physid_and_coreid` and `__physid_and_coreid_by_proc` mappings
-        for Windows platforms.
+        Update `__threadid_by_cpuid_and_coreid` and `__cpuid_and_coreid_by_threadid` mappings.
+
+        @type  coreInfo: list[tuple[str, str, str]]
+        @param coreInfo: A list of tuples containing CPU ID, Physical Core ID, and Logical Core ID.
 
         Implementation detail:
-        For hybrid CPUs, Performance cores are hyper-threaded, Efficient cores are mono threaded.
-        For each processor, we map logical cores to their physical core.
-        This is then used in reserveHT() to book the proper number of cores for each frame.
+        One CPU has one or more physical cores,
+         and each physical core has one or more logical cores.
+        Some CPUs have hyper-threading, which means that each logical core is treated as
+         a separate core by the operating system, while being on the same physical core.
+        Hybrid CPUs have performance cores that are hyper-threaded,
+         and efficient cores that are mono-threaded.
+        On Windows, we can't detect each physical CPU,
+         so instead we use CPU groups (64 cores per group).
         """
-        import wmi  # Windows-specific
 
         # Reset mappings
-        self.__procs_by_physid_and_coreid = {}
-        self.__physid_and_coreid_by_proc = {}
+        self.__threadid_by_cpuid_and_coreid = {}
+        self.__cpuid_and_coreid_by_threadid = {}
 
-        # Connect to the Windows Management Instrumentation (WMI) interface
-        wmiInstance = wmi.WMI()
+        for (cpu_id, physical_core_id, logical_core_id) in coreInfo:
+            log.debug(f"CPU ID: {cpu_id}, Logical Cores: {len(cores)}, Core IDs: {logical_core_id}")
 
-        # Retrieve CPU information using WMI
-        for physicalId, processor in enumerate(wmiInstance.Win32_Processor()):
-            pCores = processor.NumberOfLogicalProcessors - processor.NumberOfCores
-            eCores = processor.NumberOfLogicalProcessors - (pCores * 2)
-            print(f"Proc #{physicalId}: {pCores} hyper-threaded cores and {eCores} single cores")
-            procId = 0
+            self.__threadid_by_cpuid_and_coreid.setdefault(
+                str(cpu_id), {}).setdefault(
+                physical_core_id, set()).add(str(logical_core_id))
+            self.__cpuid_and_coreid_by_threadid[logical_core_id] = (str(cpu_id), str(physical_core_id))
 
-            for coreId in range(processor.NumberOfCores):
-                if coreId < pCores:
-                    threadPerCore = 2
-                else:
-                    threadPerCore = 1
-                for _ in range(threadPerCore):
-                    self.__procs_by_physid_and_coreid.setdefault(
-                        str(physicalId), {}
-                    ).setdefault(str(coreId), set()).add(str(procId))
-                    self.__physid_and_coreid_by_proc[str(procId)] = (
-                        str(physicalId),
-                        str(coreId),
-                    )
-                    procId += 1
+
 
     def getWindowsMemory(self):
         """Gets information on system memory, Windows compatible version."""
