@@ -357,7 +357,8 @@ class FrameAttendantThread(threading.Thread):
         frameInfo = self.frameInfo
         runFrame = self.runFrame
         affinity = None
-        print(f"affinity: {runFrame.attributes['CPU_LIST']=}")
+        log.debug("Running frame on Windows")
+        log.debug(f"affinity: {runFrame.attributes['CPU_LIST']=}")
         if 'CPU_LIST' in runFrame.attributes:
             affinity = runFrame.attributes['CPU_LIST'].split(',')
 
@@ -384,7 +385,7 @@ class FrameAttendantThread(threading.Thread):
 
         if affinity:
             process = psutil.Process(frameInfo.forkedCommand.pid)
-            print(f"Setting CPU affinity to {affinity} for process {frameInfo.forkedCommand.pid}")
+            log.debug(f"Setting CPU affinity to {affinity} for process {frameInfo.forkedCommand.pid}")
             process.cpu_affinity(map(int, affinity))
 
         if not self.rqCore.updateRssThread.is_alive():
