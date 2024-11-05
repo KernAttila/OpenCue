@@ -576,7 +576,11 @@ class Machine(object):
         return self.__renderHost, self.__coreInfo
 
     def __initMachineStats(self, pathCpuInfo=None):
-        """Updates static machine information during initialization"""
+        """Updates static machine information during initialization
+
+        @type  pathCpuInfo: str
+        @param pathCpuInfo: Path to a specific cpuinfo file
+        """
         self.__renderHost.name = self.getHostname()
         self.__renderHost.boot_time = self.getBootTime()
         self.__renderHost.facility = rqd.rqconstants.DEFAULT_FACILITY
@@ -586,61 +590,6 @@ class Machine(object):
 
         __numProcs = __totalCores = 0
         if platform.system() == "Linux" or pathCpuInfo is not None:
-            # Reads static information for mcp
-            mcpStat = os.statvfs(self.getTempPath())
-            self.__renderHost.total_mcp = mcpStat.f_blocks * mcpStat.f_frsize // KILOBYTE
-
-            # Reset mappings
-            self.__procs_by_physid_and_coreid = {}
-            self.__physid_and_coreid_by_proc = {}
-
-            # Reads static information from /proc/cpuinfo
-            with open(pathCpuInfo or rqd.rqconstants.PATH_CPUINFO, "r",
-                      encoding='utf-8') as cpuinfoFile:
-                currCore = {}
-                procsFound = []
-                for line in cpuinfoFile:
-                    lineList = line.strip().replace("\t", "").split(": ")
-                    # A normal entry added to the singleCore dictionary
-                    if len(lineList) >= 2:
-                        currCore[lineList[0]] = lineList[1]
-                    # The end of a processor block
-                    elif lineList == ['']:
-
-                        __totalCores += rqd.rqconstants.CORE_VALUE
-                        if "core id" in currCore \
-                                and "physical id" in currCore \
-                                and not currCore["physical id"] in procsFound:
-                            procsFound.append(currCore["physical id"])
-                            __numProcs += 1
-                        elif "core id" not in currCore:
-                            __numProcs += 1
-
-                        if 'physical id' in currCore and 'core id' in currCore:
-                            # Keep track of what processors are on which core on
-                            # which physical socket.
-                            procid, physid, coreid = (
-                                currCore['processor'],
-                                currCore['physical id'],
-                                currCore['core id'])
-                            self.__procs_by_physid_and_coreid \
-                                .setdefault(physid, {}) \
-                                .setdefault(coreid, set()).add(procid)
-                            self.__physid_and_coreid_by_proc[procid] = physid, coreid
-                        currCore = {}
-
-                    # An entry without data
-                    elif len(lineList) == 1:
-                        currCore[lineList[0]] = ""
-
-                # Reads information from /proc/meminfo
-                with codecs.open(rqd.rqconstants.PATH_MEMINFO, "r", encoding="utf-8") as fp:
-                    for line in fp:
-                        if line.startswith("MemTotal"):
-                            self.__renderHost.total_mem = int(line.split()[1])
-                        elif line.startswith("SwapTotal"):
-                            self.__renderHost.total_swap = int(line.split()[1])
-
             cpu_count, core_count, thread_count = self.__initStatsLinux(pathCpuInfo)
         elif platform.system() == 'Windows':
             cpu_count, core_count, thread_count = self.__initStatsWindows()
@@ -662,12 +611,19 @@ class Machine(object):
             log.warning("Manually overriding the number of reported procs")
             __numProcs = rqd.rqconstants.OVERRIDE_PROCS
 
+        elif platform.system() == 'Darwin':
+            self.updateMacMemory()
 
         self.__coreInfo.idle_cores = __totalCores
         self.__coreInfo.total_cores = __totalCores
         self.__renderHost.num_procs = __numProcs
         self.__renderHost.cores_per_proc = __totalCores // __numProcs
 
+        # Updates dynamic information
+        self.__renderHost.load = self.getLoadAvg()
+        self.__renderHost.nimby_enabled = self.__rqCore.nimby.active
+        self.__renderHost.nimby_locked = self.__rqCore.nimby.locked
+        self.__renderHost.state = self.state
 
     def __initStatsFromWindows(self):
         """Init machine stats for Windows platforms.
@@ -691,10 +647,6 @@ class Machine(object):
         self.__updateProcsMappingsFromWindows()
 
         logicalCoreCount = psutil.cpu_count(logical=True)
-        actualCoreCount = psutil.cpu_count(logical=False)
-        hyperThreadingMultiplier = logicalCoreCount // actualCoreCount
-
-        physicalProcessorCount = len(self.__procs_by_physid_and_coreid)
 
         return logicalCoreCount, physicalProcessorCount, hyperThreadingMultiplier
 
