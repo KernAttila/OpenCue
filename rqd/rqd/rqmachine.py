@@ -424,8 +424,6 @@ class Machine(object):
         if platform.system() == "Linux":
             with open(rqd.rqconstants.PATH_LOADAVG, "r", encoding='utf-8') as loadAvgFile:
                 loadAvg = int(float(loadAvgFile.read().split()[0]) * 100)
-                if self.__enabledHT():
-                    loadAvg = loadAvg // self.__getHyperthreadingMultiplier()
                 loadAvg = loadAvg + rqd.rqconstants.LOAD_MODIFIER
                 loadAvg = max(loadAvg, 0)
                 return loadAvg
@@ -608,9 +606,6 @@ class Machine(object):
                         currCore[lineList[0]] = lineList[1]
                     # The end of a processor block
                     elif lineList == ['']:
-                        # Check for hyper-threading
-                        hyperthreadingMultiplier = (int(currCore.get('siblings', '1'))
-                                                    // int(currCore.get('cpu cores', '1')))
 
                         __totalCores += rqd.rqconstants.CORE_VALUE
                         if "core id" in currCore \
@@ -645,12 +640,10 @@ class Machine(object):
                             self.__renderHost.total_mem = int(line.split()[1])
                         elif line.startswith("SwapTotal"):
                             self.__renderHost.total_swap = int(line.split()[1])
-        else:
-            hyperthreadingMultiplier = 1
 
-        if platform.system() == 'Windows':
-            logicalCoreCount, __numProcs, hyperthreadingMultiplier = self.__initStatsFromWindows()
-            __totalCores = logicalCoreCount * rqd.rqconstants.CORE_VALUE
+            cpu_count, core_count, thread_count = self.__initStatsLinux(pathCpuInfo)
+        elif platform.system() == 'Windows':
+            cpu_count, core_count, thread_count = self.__initStatsWindows()
 
         # All other systems will just have one proc/core
         if not __numProcs or not __totalCores:
@@ -669,16 +662,12 @@ class Machine(object):
             log.warning("Manually overriding the number of reported procs")
             __numProcs = rqd.rqconstants.OVERRIDE_PROCS
 
-        # Don't report/reserve cores added due to hyperthreading
-        __totalCores = __totalCores // hyperthreadingMultiplier
 
         self.__coreInfo.idle_cores = __totalCores
         self.__coreInfo.total_cores = __totalCores
         self.__renderHost.num_procs = __numProcs
         self.__renderHost.cores_per_proc = __totalCores // __numProcs
 
-        if hyperthreadingMultiplier >= 1:
-            self.__renderHost.attributes['hyperthreadingMultiplier'] = str(hyperthreadingMultiplier)
 
     def __initStatsFromWindows(self):
         """Init machine stats for Windows platforms.
@@ -879,12 +868,6 @@ class Machine(object):
         self.__bootReport.host.CopyFrom(self.getHostInfo())
 
         return self.__bootReport
-
-    def __enabledHT(self):
-        return 'hyperthreadingMultiplier' in self.__renderHost.attributes
-
-    def __getHyperthreadingMultiplier(self):
-        return int(self.__renderHost.attributes['hyperthreadingMultiplier'])
 
     def setupTaskset(self):
         """ Setup rqd for hyper-threading """
