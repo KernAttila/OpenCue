@@ -95,7 +95,8 @@ MINIMUM_IDLE = 900
 MINIMUM_MEM = 524288
 MINIMUM_SWAP = 1048576
 # If (machine load * 100 / cores) goes over this amount, don't unlock nimby.
-# 1.5 would mean a max load of 1.5 per core
+# "Load" is the average number of processes waiting to be processed in the last 1 minute per logical core.
+# 1.5 would mean a max load of 1.5 per logical core.
 MAXIMUM_LOAD = 75
 
 EXITSTATUS_FOR_FAILED_LAUNCH = 256
