@@ -586,38 +586,54 @@ class Machine(object):
         self.__renderHost.facility = rqd.rqconstants.DEFAULT_FACILITY
         self.__renderHost.attributes['SP_OS'] = rqd.rqconstants.SP_OS
 
+        # Get the total memory and swap
         self.updateMachineStats()
 
-        __numProcs = __totalCores = 0
+        cpu_count = core_count = thread_count = 0
+
         if platform.system() == "Linux" or pathCpuInfo is not None:
             cpu_count, core_count, thread_count = self.__initStatsLinux(pathCpuInfo)
         elif platform.system() == 'Windows':
             cpu_count, core_count, thread_count = self.__initStatsWindows()
 
         # All other systems will just have one proc/core
-        if not __numProcs or not __totalCores:
-            __numProcs = 1
-            __totalCores = rqd.rqconstants.CORE_VALUE
+        if not cpu_count or not core_count:
+            cpu_count = 1
+            thread_count = 1
+            core_count = 1
 
+        # Override values from rqd.conf
         if rqd.rqconstants.OVERRIDE_MEMORY is not None:
             log.warning("Manually overriding the total memory")
             self.__renderHost.total_mem = rqd.rqconstants.OVERRIDE_MEMORY
 
         if rqd.rqconstants.OVERRIDE_CORES is not None:
             log.warning("Manually overriding the number of reported cores")
-            __totalCores = rqd.rqconstants.OVERRIDE_CORES * rqd.rqconstants.CORE_VALUE
+            core_count = rqd.rqconstants.OVERRIDE_CORES * rqd.rqconstants.CORE_VALUE
+            thread_count = rqd.rqconstants.OVERRIDE_CORES * rqd.rqconstants.CORE_VALUE
 
         if rqd.rqconstants.OVERRIDE_PROCS is not None:
             log.warning("Manually overriding the number of reported procs")
-            __numProcs = rqd.rqconstants.OVERRIDE_PROCS
+            cpu_count = rqd.rqconstants.OVERRIDE_PROCS
+
+        self.__coreInfo.idle_cores = core_count * rqd.rqconstants.CORE_VALUE
+        self.__coreInfo.total_cores = core_count * rqd.rqconstants.CORE_VALUE
+        self.__coreInfo.total_threads = thread_count * rqd.rqconstants.CORE_VALUE
+        self.__renderHost.num_procs = cpu_count
+        self.__renderHost.cores_per_proc = core_count * rqd.rqconstants.CORE_VALUE // cpu_count
+        self.__renderHost.threads_per_proc = thread_count * rqd.rqconstants.CORE_VALUE // cpu_count
+
+
+    def updateMachineStats(self):
+        """Updates dynamic machine information during runtime"""
+        if platform.system() == "Linux":
+            self.updateLinuxMemory()
 
         elif platform.system() == 'Darwin':
             self.updateMacMemory()
 
-        self.__coreInfo.idle_cores = __totalCores
-        self.__coreInfo.total_cores = __totalCores
-        self.__renderHost.num_procs = __numProcs
-        self.__renderHost.cores_per_proc = __totalCores // __numProcs
+        elif platform.system() == 'Windows':
+            self.updateWindowsMemory()
 
         # Updates dynamic information
         self.__renderHost.load = self.getLoadAvg()
