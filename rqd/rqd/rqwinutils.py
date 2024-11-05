@@ -73,13 +73,12 @@ class SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX(Structure):
 def get_logical_processor_information_ex():
     """ Retrieves information about all the logical processors in the system.
     Usage:
-        Used in rqmachine.Machine.__updateProcsMappingsFromWindows()
+        Used in rqmachine.Machine.__initStatsWindows()
     Returns:
-        List of tuples:
-            - mask (int): The processor mask.
-            - group (int): The processor group.
-            - logical_cores (int): The number of logical cores.
-            - core_ids (list(int)): id of each logical core in the mask.
+        List of tuples for each thread (logical core):
+            - group (int): Its processor group ID. (we can't detect different CPUS directly)
+            - core_id (int): Its physical core ID.
+            - thread_id (int): Its logical core ID.
     Raises:
         WinError: If there is an error in retrieving the processor information.
     References:
@@ -110,14 +109,17 @@ def get_logical_processor_information_ex():
 
     # Extract information
     cores_info = []
-    _core_id = 0
+    core_id = 0
+    _thread_id_inc = 0
     for item in buffer:
         if item.Relationship == RelationProcessorCore:
             mask = item.DUMMYUNIONNAME.Processor.GroupMask[0].Mask
             group = item.DUMMYUNIONNAME.Processor.GroupMask[0].Group
             logical_cores = bin(mask).count('1')
-            core_ids = [_core_id + i for i in range(logical_cores)]
-            cores_info.append((mask, group, logical_cores, core_ids))
-            _core_id += logical_cores
+            thread_ids = [_thread_id_inc + i for i in range(logical_cores)]
+            for thread_id in thread_ids:
+                cores_info.append((group, core_id, thread_id))
+            _thread_id_inc += logical_cores
+            core_id += 1
 
     return cores_info
