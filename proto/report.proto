@@ -32,12 +32,13 @@ message BootReport {
 }
 
 message CoreDetail {
-    int32 total_cores = 1;
+    int32 total_cores = 1; // physical cores
     int32 idle_cores = 2;
     int32 locked_cores = 3;
     int32 booked_cores = 4;
+    int32 total_threads = 5; // logical cores
     //map <key: physid, value: coreid>
-    map<int64, CoreId> reserved_cores = 5;
+    map<int64, CoreId> reserved_cores = 6;
 }
 
 message CoreId {
@@ -65,21 +66,22 @@ message RenderHost {
     bool nimby_locked = 3; // if nimby has locked the host due to user activity
     string facility= 4; // The name of the facility that the host is in
     int32 num_procs = 5; // the number of physical procs on this machine
-    int32 cores_per_proc = 6; // the number of cores per proc
-    int64 total_swap = 7; // the total size of the swap in kB
-    int64 total_mem = 8; // the total size of the main memory pool in kB
-    int64 total_mcp = 9; // the total size of MCP in kB
-    int64 free_swap = 10; // the current amount of free swap in kB
-    int64 free_mem = 11; // the current amount of free memory in kB
-    int64 free_mcp = 12; // the current amount of free MCP in kB
-    int32 load = 13; // the current load on the proc
-    int32 boot_time = 14; // the time the proc was booted
-    repeated string tags = 15; // an array of default tags that are added to the host record
-    host.HardwareState state = 16; // hardware state for the host
-    map<string, string> attributes = 17; // additional data can be provided about the host
-    int32 num_gpus = 18; // the number of physical GPU's
-    int64 free_gpu_mem = 19; // the current amount of free gpu memory in kB
-    int64 total_gpu_mem = 20; // the total size of gpu memory in kB
+    int32 cores_per_proc = 6; // the number of physical cores per proc
+    int32 threads_per_proc = 7; // the number of logical cores per proc
+    int64 total_swap = 8; // the total size of the swap in kB
+    int64 total_mem = 9; // the total size of the main memory pool in kB
+    int64 total_mcp = 10; // the total size of MCP in kB
+    int64 free_swap = 11; // the current amount of free swap in kB
+    int64 free_mem = 12; // the current amount of free memory in kB
+    int64 free_mcp = 13; // the current amount of free MCP in kB
+    int32 load = 14; // the current load on the proc
+    int32 boot_time = 15; // the time the proc was booted
+    repeated string tags = 16; // an array of default tags that are added to the host record
+    host.HardwareState state = 17; // hardware state for the host
+    map<string, string> attributes = 18; // additional data can be provided about the host
+    int32 num_gpus = 19; // the number of physical GPU's
+    int64 free_gpu_mem = 20; // the current amount of free gpu memory in kB
+    int64 total_gpu_mem = 21; // the total size of gpu memory in kB
 };
 
 message RunningFrameInfo {
