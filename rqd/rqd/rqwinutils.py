@@ -9,9 +9,9 @@ Classes:
 Functions:
     get_logical_processor_information_ex(): Retrieves information about all the logical processors in the system.
 """
-from ctypes import c_size_t, c_ulonglong, c_int, Structure, Union, WinDLL, POINTER, sizeof, WinError, byref, \
-    get_last_error
-from ctypes import wintypes as w
+from ctypes import c_size_t, c_ulonglong, c_int, Structure, Union, WinDLL
+from ctypes import POINTER, sizeof, WinError, byref, get_last_error
+from ctypes import wintypes
 
 # pylint: disable=line-too-long
 
@@ -19,13 +19,13 @@ class GROUP_AFFINITY(Structure):
     """ A structure that represents the affinity of a group of processors.
     Attributes:
         Mask (c_ulonglong): A bitmask that specifies the affinity of processors in the group.
-        Group (w.WORD): The processor group number.
+        Group (wintypes.WORD): The processor group number.
     Reference:
         https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-group_affinity
     """
     _fields_ = [("Mask", c_ulonglong),
-                ("Group", w.WORD),
-                ("Reserved", w.WORD * 3)]
+                ("Group", wintypes.WORD),
+                ("Reserved", wintypes.WORD * 3)]
 
 
 class PROCESSOR_RELATIONSHIP(Structure):
@@ -38,10 +38,10 @@ class PROCESSOR_RELATIONSHIP(Structure):
     Reference:
         - https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-processor_relationship
     """
-    _fields_ = [("Flags", w.BYTE),
-                ("EfficiencyClass", w.BYTE),
-                ("Reserved", w.BYTE * 20),
-                ("GroupCount", w.WORD),
+    _fields_ = [("Flags", wintypes.BYTE),
+                ("EfficiencyClass", wintypes.BYTE),
+                ("Reserved", wintypes.BYTE * 20),
+                ("GroupCount", wintypes.WORD),
                 ("GroupMask", GROUP_AFFINITY * 1)]
 
 
@@ -65,8 +65,8 @@ class SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX(Structure):
     Reference:
         - https://learn.microsoft.com/fr-fr/windows/win32/api/sysinfoapi/nf-sysinfoapi-getlogicalprocessorinformationex
     """
-    _fields_ = [("Relationship", w.DWORD),
-                ("Size", w.DWORD),
+    _fields_ = [("Relationship", wintypes.DWORD),
+                ("Size", wintypes.DWORD),
                 ("DUMMYUNIONNAME", DUMMYUNIONNAME)]
 
 
@@ -88,15 +88,16 @@ def get_logical_processor_information_ex():
 
     kernel32 = WinDLL('kernel32', use_last_error=True)
     GetLogicalProcessorInformationEx = kernel32.GetLogicalProcessorInformationEx
-    GetLogicalProcessorInformationEx.argtypes = [w.DWORD, POINTER(SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX),
-                                                 POINTER(w.DWORD)]
-    GetLogicalProcessorInformationEx.restype = w.BOOL
+    GetLogicalProcessorInformationEx.argtypes = [wintypes.DWORD,
+                                                 POINTER(SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX),
+                                                 POINTER(wintypes.DWORD)]
+    GetLogicalProcessorInformationEx.restype = wintypes.BOOL
 
     RelationProcessorCore = 0  # RelationProcessorCore constant
     ERROR_INSUFFICIENT_BUFFER = 122
 
     # Get required buffer size by calling the function with a null buffer
-    buffer_size = w.DWORD(0)
+    buffer_size = wintypes.DWORD(0)
     if not GetLogicalProcessorInformationEx(RelationProcessorCore, None, byref(buffer_size)):
         if get_last_error() != ERROR_INSUFFICIENT_BUFFER:
             raise WinError(get_last_error())
