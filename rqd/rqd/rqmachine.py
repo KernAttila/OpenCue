@@ -727,9 +727,35 @@ class Machine(object):
                 physical_core_id, set()).add(str(logical_core_id))
             self.__cpuid_and_coreid_by_threadid[logical_core_id] = (str(cpu_id), str(physical_core_id))
 
+    def updateLinuxMemory(self):
+        """Gets information on system memory for Linux."""
+        # Reads dynamic information for mcp
+        mcpStat = os.statvfs(self.getTempPath())
+        self.__renderHost.free_mcp = (mcpStat.f_bavail * mcpStat.f_bsize) // KILOBYTE
 
+        # Reads dynamic information from /proc/meminfo
+        with open(rqd.rqconstants.PATH_MEMINFO, "r", encoding='utf-8') as fp:
+            for line in fp:
+                if line.startswith("MemFree"):
+                    freeMem = int(line.split()[1])
+                elif line.startswith("SwapFree"):
+                    freeSwapMem = int(line.split()[1])
+                elif line.startswith("SwapTotal"):
+                    self.__renderHost.total_swap = int(line.split()[1])
+                elif line.startswith("Cached"):
+                    cachedMem = int(line.split()[1])
+                elif line.startswith("MemTotal"):
+                    self.__renderHost.total_mem = int(line.split()[1])
 
-    def getWindowsMemory(self):
+        self.__renderHost.free_swap = freeSwapMem
+        self.__renderHost.free_mem = freeMem + cachedMem
+        self.__renderHost.num_gpus = self.getGpuCount()
+        self.__renderHost.total_gpu_mem = self.getGpuMemoryTotal()
+        self.__renderHost.free_gpu_mem = self.getGpuMemoryFree()
+
+        self.__renderHost.attributes['swapout'] = self.__getSwapout()
+
+    def __getWindowsMemory(self):
         """Gets information on system memory, Windows compatible version."""
         # From
         # http://stackoverflow.com/questions/2017545/get-memory-usage-of-computer-in-windows-with-python
@@ -754,6 +780,25 @@ class Machine(object):
             self.__windowsStat = MEMORYSTATUSEX()
         ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(self.__windowsStat))
         return self.__windowsStat
+
+    def updateWindowsMemory(self):
+        """Updates the internal store of memory available for Windows."""
+        stat = self.__getWindowsMemory()
+        temp_path = os.getenv('TEMP')  # Windows temp directory
+        disk_usage = psutil.disk_usage(temp_path)
+
+        self.__renderHost.total_mcp = disk_usage.total // 1024
+        self.__renderHost.free_mcp = disk_usage.free // 1024
+
+        self.__renderHost.total_mem = int(stat.ullTotalPhys / 1024)
+        self.__renderHost.free_mem = int(stats.ullAvailPhys / 1024)
+
+        self.__renderHost.total_swap = int(stat.ullTotalPageFile / 1024)
+        self.__renderHost.free_swap = int(stats.ullAvailPageFile / 1024)
+
+        self.__renderHost.num_gpus = self.getGpuCount()
+        self.__renderHost.total_gpu_mem = self.getGpuMemoryTotal()
+        self.__renderHost.free_gpu_mem = self.getGpuMemoryFree()
 
     def updateMacMemory(self):
         """Updates the internal store of memory available, macOS compatible version."""
@@ -784,52 +829,6 @@ class Machine(object):
             self.__renderHost.free_swap = int(float(swapMatch.group('freeMb')) * 1024)
         else:
             self.__renderHost.free_swap = 0
-
-    def updateMachineStats(self):
-        """Updates dynamic machine information during runtime"""
-        if platform.system() == "Linux":
-            # Reads dynamic information for mcp
-            mcpStat = os.statvfs(self.getTempPath())
-            self.__renderHost.free_mcp = (mcpStat.f_bavail * mcpStat.f_bsize) // KILOBYTE
-
-            # Reads dynamic information from /proc/meminfo
-            with open(rqd.rqconstants.PATH_MEMINFO, "r", encoding='utf-8') as fp:
-                for line in fp:
-                    if line.startswith("MemFree"):
-                        freeMem = int(line.split()[1])
-                    elif line.startswith("SwapFree"):
-                        freeSwapMem = int(line.split()[1])
-                    elif line.startswith("Cached"):
-                        cachedMem = int(line.split()[1])
-                    elif line.startswith("MemTotal"):
-                        self.__renderHost.total_mem = int(line.split()[1])
-
-            self.__renderHost.free_swap = freeSwapMem
-            self.__renderHost.free_mem = freeMem + cachedMem
-            self.__renderHost.num_gpus = self.getGpuCount()
-            self.__renderHost.total_gpu_mem = self.getGpuMemoryTotal()
-            self.__renderHost.free_gpu_mem = self.getGpuMemoryFree()
-
-            self.__renderHost.attributes['swapout'] = self.__getSwapout()
-
-        elif platform.system() == 'Darwin':
-            self.updateMacMemory()
-
-        elif platform.system() == 'Windows':
-            TEMP_DEFAULT = 1048576
-            stats = self.getWindowsMemory()
-            self.__renderHost.free_mcp = TEMP_DEFAULT
-            self.__renderHost.free_swap = int(stats.ullAvailPageFile / 1024)
-            self.__renderHost.free_mem = int(stats.ullAvailPhys / 1024)
-            self.__renderHost.num_gpus = self.getGpuCount()
-            self.__renderHost.total_gpu_mem = self.getGpuMemoryTotal()
-            self.__renderHost.free_gpu_mem = self.getGpuMemoryFree()
-
-        # Updates dynamic information
-        self.__renderHost.load = self.getLoadAvg()
-        self.__renderHost.nimby_enabled = self.__rqCore.nimby.active
-        self.__renderHost.nimby_locked = self.__rqCore.nimby.locked
-        self.__renderHost.state = self.state
 
     def getHostInfo(self):
         """Updates and returns the renderHost struct"""
@@ -889,7 +888,7 @@ class Machine(object):
         avail_cores_count = 0
         reserved_cores = self.__coreInfo.reserved_cores
 
-        for physid, cores in self.__procs_by_physid_and_coreid.items():
+        for physid, cores in self.__threadid_by_cpuid_and_coreid.items():
             for coreid in cores.keys():
                 if int(physid) in reserved_cores and \
                         int(coreid) in reserved_cores[int(physid)].coreid:
@@ -922,7 +921,7 @@ class Machine(object):
                 reserved_cores[int(physid)].coreid.extend([int(coreid)])
                 remaining_cores -= 1
 
-                for procid in self.__procs_by_physid_and_coreid[physid][coreid]:
+                for procid in self.__threadid_by_cpuid_and_coreid[physid][coreid]:
                     tasksets.append(procid)
 
             if remaining_cores == 0:
@@ -948,7 +947,7 @@ class Machine(object):
         # aren't valid core identities.
         reserved_cores = self.__coreInfo.reserved_cores
         for core in reservedHT.split(','):
-            physical_id_str, core_id_str = self.__physid_and_coreid_by_proc.get(core)
+            physical_id_str, core_id_str = self.__cpuid_and_coreid_by_threadid.get(core)
             physical_id = int(physical_id_str)
             core_id = int(core_id_str)
 
