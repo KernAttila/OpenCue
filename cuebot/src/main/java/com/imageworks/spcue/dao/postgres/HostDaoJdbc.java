@@ -287,6 +287,7 @@ public class HostDaoJdbc extends JdbcDaoSupport implements HostDao {
             "int_procs,"+
             "int_cores, " +
             "int_cores_idle, " +
+            "int_threads, " +
             "int_mem,"+
             "int_mem_idle,"+
             "int_gpus, " +
@@ -296,7 +297,7 @@ public class HostDaoJdbc extends JdbcDaoSupport implements HostDao {
             "str_fqdn, " +
             "int_thread_mode "+
         ") " +
-        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
 
         "INSERT INTO " +
         "host_stat " +
@@ -360,6 +361,7 @@ public class HostDaoJdbc extends JdbcDaoSupport implements HostDao {
 
         String hid = SqlUtil.genKeyRandom();
         int coreUnits = host.getNumProcs() * host.getCoresPerProc();
+        int threadUnits = host.getNumProcs() * host.getThreadsPerProc();
         String os = host.getAttributesMap().get("SP_OS");
         if (os == null) {
             os = Dispatcher.OS_DEFAULT;
@@ -367,7 +369,7 @@ public class HostDaoJdbc extends JdbcDaoSupport implements HostDao {
 
         getJdbcTemplate().update(INSERT_HOST_DETAIL[0],
                 hid, a.getAllocationId(), name, host.getNimbyEnabled(),
-                LockState.OPEN.toString(), host.getNumProcs(), coreUnits, coreUnits,
+                LockState.OPEN.toString(), host.getNumProcs(), coreUnits, coreUnits, threadUnits,
                 memUnits, memUnits,
                 host.getNumGpus(), host.getNumGpus(),
                 host.getTotalGpuMem(), host.getTotalGpuMem(),
@@ -447,6 +449,7 @@ public class HostDaoJdbc extends JdbcDaoSupport implements HostDao {
 
         long memory = convertMemoryUnits(report.getHost());
         int cores = report.getHost().getNumProcs() * report.getHost().getCoresPerProc();
+        int threads = report.getHost().getNumProcs() * report.getHost().getThreadsPerProc();
         long gpu_memory = report.getHost().getTotalGpuMem();
         int gpus = report.getHost().getNumGpus();
 
@@ -457,6 +460,7 @@ public class HostDaoJdbc extends JdbcDaoSupport implements HostDao {
                     "b_nimby=?,"+
                     "int_cores=?," +
                     "int_cores_idle=?," +
+                    "int_threads=?," +
                     "int_mem=?," +
                     "int_mem_idle=?, " +
                     "int_gpus=?," +
@@ -471,7 +475,7 @@ public class HostDaoJdbc extends JdbcDaoSupport implements HostDao {
                     "int_mem = int_mem_idle " +
                 "AND " +
                     "int_gpus = int_gpus_idle",
-                    report.getHost().getNimbyEnabled(), cores, cores,
+                    report.getHost().getNimbyEnabled(), cores, cores, threads,
                     memory, memory, gpus, gpus, gpu_memory, gpu_memory, host.getId());
     }
 
