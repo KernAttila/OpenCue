@@ -720,7 +720,9 @@ class Machine(object):
         self.__cpuid_and_coreid_by_threadid = {}
 
         for (cpu_id, physical_core_id, logical_core_id) in coreInfo:
-            log.debug(f"CPU ID: {cpu_id}, Logical Cores: {len(cores)}, Core IDs: {logical_core_id}")
+            log.debug(f"CPU ID: {cpu_id}, "
+                      f"Physical core ID: {physical_core_id}, "
+                      f"Logical core ID: {logical_core_id}")
 
             self.__threadid_by_cpuid_and_coreid.setdefault(
                 str(cpu_id), {}).setdefault(
