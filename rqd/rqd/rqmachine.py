@@ -791,10 +791,10 @@ class Machine(object):
         self.__renderHost.free_mcp = disk_usage.free // 1024
 
         self.__renderHost.total_mem = int(stat.ullTotalPhys / 1024)
-        self.__renderHost.free_mem = int(stats.ullAvailPhys / 1024)
+        self.__renderHost.free_mem = int(stat.ullAvailPhys / 1024)
 
         self.__renderHost.total_swap = int(stat.ullTotalPageFile / 1024)
-        self.__renderHost.free_swap = int(stats.ullAvailPageFile / 1024)
+        self.__renderHost.free_swap = int(stat.ullAvailPageFile / 1024)
 
         self.__renderHost.num_gpus = self.getGpuCount()
         self.__renderHost.total_gpu_mem = self.getGpuMemoryTotal()
