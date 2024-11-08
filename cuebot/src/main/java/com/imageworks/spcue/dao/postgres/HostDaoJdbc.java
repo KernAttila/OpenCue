@@ -75,6 +75,7 @@ public class HostDaoJdbc extends JdbcDaoSupport implements HostDao {
             host.state = HardwareState.valueOf(rs.getString("str_state"));
             host.unlockAtBoot = rs.getBoolean("b_unlock_boot");
             host.cores = rs.getInt("int_cores");
+            host.threads = rs.getInt("int_threads");
             host.idleCores = rs.getInt("int_cores_idle");
             host.memory = rs.getLong("int_mem");
             host.idleMemory = rs.getLong("int_mem_idle");
@@ -114,6 +115,7 @@ public class HostDaoJdbc extends JdbcDaoSupport implements HostDao {
             "host.b_nimby,"+
             "host.b_unlock_boot,"+
             "host.int_cores,"+
+            "host.int_threads,"+
             "host.int_cores_idle,"+
             "host.int_mem,"+
             "host.int_mem_idle,"+
@@ -210,6 +212,7 @@ public class HostDaoJdbc extends JdbcDaoSupport implements HostDao {
             host.lockState = LockState.valueOf(rs.getString("str_lock_state"));
             host.memory = rs.getLong("int_mem");
             host.cores = rs.getInt("int_cores");
+            host.threads = rs.getInt("int_threads");
             host.gpus = rs.getInt("int_gpus");
             host.gpuMemory = rs.getLong("int_gpu_mem");
             host.idleMemory= rs.getLong("int_mem_idle");
@@ -233,6 +236,7 @@ public class HostDaoJdbc extends JdbcDaoSupport implements HostDao {
             "host.str_name," +
             "host.str_lock_state, " +
             "host.int_cores, "+
+            "host.int_threads, "+
             "host.int_cores_idle, " +
             "host.int_mem,"+
             "host.int_mem_idle, "+
