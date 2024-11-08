@@ -442,12 +442,20 @@ class Host(object):
         return self.data.has_comment
 
     def cores(self):
-        """Returns the total number of cores the host has.
+        """Returns the total number of physical cores the host has.
 
         :rtype: float
         :return: total number of host cores
         """
         return self.data.cores
+
+    def threads(self):
+        """Returns the total number of logical cores the host has.
+
+        :rtype: float
+        :return: total number of host threads
+        """
+        return self.data.threads
 
     def coresReserved(self):
         """Returns the number of cores the host has which are currently reserved.
