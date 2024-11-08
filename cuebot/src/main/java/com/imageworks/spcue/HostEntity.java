@@ -36,6 +36,7 @@ public class HostEntity extends Entity implements HostInterface {
     public int procs;
     public int cores;
     public int idleCores;
+    public int threads;
     public long memory;
     public long idleMemory;
     public int gpus;

@@ -39,6 +39,7 @@ public class DispatchHost extends Entity
 
     public int cores;
     public int idleCores;
+    public int threads;
 
     public int gpus;
     public int idleGpus;
