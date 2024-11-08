@@ -100,42 +100,46 @@ class HostMonitorTree(cuegui.AbstractTreeWidget.AbstractTreeWidget):
         self.addColumn("Cores", 60, id=10,
                        data=lambda host: "%.2f" % host.data.cores,
                        sort=lambda host: host.data.cores,
-                       tip="The total number of cores.\n\n"
+                       tip="The total number of physical cores.\n\n"
                            "On a frame it is the number of cores reserved.")
-        self.addColumn("Idle Cores", 60, id=11,
+        self.addColumn("Threads", 60, id=11,
+                       data=lambda host: "%.2f" % host.data.threads,
+                       sort=lambda host: host.data.threads,
+                       tip="The total number of logical cores.")
+        self.addColumn("Idle Cores", 60, id=12,
                        data=lambda host: "%.2f" % host.data.idle_cores,
                        sort=lambda host: host.data.idle_cores,
                        tip="The number of cores that are not reserved.")
-        self.addColumn("GPUs", 50, id=12,
+        self.addColumn("GPUs", 50, id=13,
                        data=lambda host: "%d" % host.data.gpus,
                        sort=lambda host: host.data.gpus,
                        tip="The total number of gpus.\n\n"
                            "On a frame it is the number of gpus reserved.")
-        self.addColumn("Idle GPUs", 50, id=13,
+        self.addColumn("Idle GPUs", 50, id=14,
                        data=lambda host: "%d" % host.data.idle_gpus,
                        sort=lambda host: host.data.idle_gpus,
                        tip="The number of gpus that are not reserved.")
-        self.addColumn("GPU Mem", 50, id=14,
+        self.addColumn("GPU Mem", 50, id=15,
                        data=lambda host: cuegui.Utils.memoryToString(host.data.gpu_memory),
                        sort=lambda host: host.data.gpu_memory,
                        tip="The total amount of reservable gpu memory.\n\n"
                            "On a frame it is the amount of gpu memory reserved.")
-        self.addColumn("Gpu Mem Idle", 50, id=15,
+        self.addColumn("Gpu Mem Idle", 50, id=16,
                        data=lambda host: cuegui.Utils.memoryToString(host.data.idle_gpu_memory),
                        sort=lambda host: host.data.idle_gpu_memory,
                        tip="The amount of unreserved gpu memory.")
-        self.addColumn("Ping", 50, id=16,
+        self.addColumn("Ping", 50, id=17,
                        data=lambda host: int(time.time() - host.data.ping_time),
                        sort=lambda host: host.data.ping_time,
                        tip="The number of seconds since the cuebot last received\n"
                            "a report from the host. A host is configured to report\n"
                            "in every 60 seconds so a number larger than this\n"
                            "indicates a problem")
-        self.addColumn("Hardware", 70, id=17,
+        self.addColumn("Hardware", 70, id=18,
                        data=lambda host: HardwareState.Name(host.data.state),
                        tip="The state of the hardware as Up or Down.\n\n"
                            "On a frame it is the amount of memory used.")
-        self.addColumn("Locked", 90, id=18,
+        self.addColumn("Locked", 90, id=19,
                        data=lambda host: LockState.Name(host.data.lock_state),
                        tip="A host can be:\n"
                            "Locked \t\t It was manually locked to prevent booking\n"
@@ -143,15 +147,15 @@ class HostMonitorTree(cuegui.AbstractTreeWidget.AbstractTreeWidget):
                            "NimbyLocked \t It is a desktop machine and there is\n"
                            "\t\t someone actively using it or not enough \n"
                            "\t\t resources are available on a desktop.")
-        self.addColumn("ThreadMode", 80, id=19,
+        self.addColumn("ThreadMode", 80, id=20,
                        data=lambda host: ThreadMode.Name(host.data.thread_mode),
                        tip="A frame that runs on this host will:\n"
                            "All:  Use all cores.\n"
                            "Auto: Use the number of cores as decided by the cuebot.\n")
-        self.addColumn("OS", 50, id=20,
+        self.addColumn("OS", 50, id=21,
                        data=lambda host: host.data.os,
                        tip="Host operational system or distro.")
-        self.addColumn("Tags/Job", 50, id=21,
+        self.addColumn("Tags/Job", 50, id=22,
                        data=lambda host: ",".join(host.data.tags),
                        tip="The tags applied to the host.\n\n"
                            "On a frame it is the name of the job.")
