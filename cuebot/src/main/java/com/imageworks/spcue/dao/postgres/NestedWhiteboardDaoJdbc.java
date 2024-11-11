@@ -363,6 +363,7 @@ public class NestedWhiteboardDaoJdbc extends JdbcDaoSupport implements NestedWhi
             "host_stat.ts_ping, " +
             "host.int_cores, " +
             "host.int_cores_idle, " +
+            "host.int_threads, " +
             "host.int_gpus, " +
             "host.int_gpus_idle, " +
             "host.int_gpu_mem, " +

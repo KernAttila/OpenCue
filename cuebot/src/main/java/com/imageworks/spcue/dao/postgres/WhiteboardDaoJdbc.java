@@ -2198,6 +2198,7 @@ public class WhiteboardDaoJdbc extends JdbcDaoSupport implements WhiteboardDao {
             "host_stat.ts_ping,"+
             "host.int_cores,"+
             "host.int_cores_idle,"+
+            "host.int_threads,"+
             "host.int_mem,"+
             "host.int_mem_idle,"+
             "host.int_gpus,"+
