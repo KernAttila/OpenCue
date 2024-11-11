@@ -1020,6 +1020,7 @@ public class WhiteboardDaoJdbc extends JdbcDaoSupport implements WhiteboardDao {
                 .setNimbyEnabled(rs.getBoolean("b_nimby"))
                 .setCores(Convert.coreUnitsToCores(rs.getInt("int_cores")))
                 .setIdleCores(Convert.coreUnitsToCores(rs.getInt("int_cores_idle")))
+                .setThreads(Convert.coreUnitsToCores(rs.getInt("int_threads")));
                 .setMemory(rs.getLong("int_mem"))
                 .setIdleMemory(rs.getLong("int_mem_idle"))
                 .setGpus(rs.getInt("int_gpus"))
@@ -1057,6 +1058,7 @@ public class WhiteboardDaoJdbc extends JdbcDaoSupport implements WhiteboardDao {
         builder.setNimbyEnabled(rs.getBoolean("b_nimby"));
         builder.setCores(Convert.coreUnitsToCores(rs.getInt("int_cores")));
         builder.setIdleCores(Convert.coreUnitsToCores(rs.getInt("int_cores_idle")));
+        builder.setThreads(Convert.coreUnitsToCores(rs.getInt("int_threads")));
         builder.setMemory(rs.getLong("int_mem"));
         builder.setIdleMemory(rs.getLong("int_mem_idle"));
         builder.setGpus(rs.getInt("int_gpus"));

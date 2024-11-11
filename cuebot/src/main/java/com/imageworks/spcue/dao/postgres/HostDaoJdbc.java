@@ -75,8 +75,8 @@ public class HostDaoJdbc extends JdbcDaoSupport implements HostDao {
             host.state = HardwareState.valueOf(rs.getString("str_state"));
             host.unlockAtBoot = rs.getBoolean("b_unlock_boot");
             host.cores = rs.getInt("int_cores");
-            host.threads = rs.getInt("int_threads");
             host.idleCores = rs.getInt("int_cores_idle");
+            host.threads = rs.getInt("int_threads");
             host.memory = rs.getLong("int_mem");
             host.idleMemory = rs.getLong("int_mem_idle");
             host.gpus = rs.getInt("int_gpus");
