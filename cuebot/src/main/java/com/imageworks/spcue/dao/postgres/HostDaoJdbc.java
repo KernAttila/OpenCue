@@ -115,8 +115,8 @@ public class HostDaoJdbc extends JdbcDaoSupport implements HostDao {
             "host.b_nimby,"+
             "host.b_unlock_boot,"+
             "host.int_cores,"+
-            "host.int_threads,"+
             "host.int_cores_idle,"+
+            "host.int_threads,"+
             "host.int_mem,"+
             "host.int_mem_idle,"+
             "host.int_gpus,"+
@@ -236,8 +236,8 @@ public class HostDaoJdbc extends JdbcDaoSupport implements HostDao {
             "host.str_name," +
             "host.str_lock_state, " +
             "host.int_cores, "+
-            "host.int_threads, "+
             "host.int_cores_idle, " +
+            "host.int_threads, "+
             "host.int_mem,"+
             "host.int_mem_idle, "+
             "host.int_gpus, "+
