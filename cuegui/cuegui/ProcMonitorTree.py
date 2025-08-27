@@ -50,6 +50,9 @@ class ProcMonitorTree(cuegui.AbstractTreeWidget.AbstractTreeWidget):
             "Cores", 50, id=2, data=lambda proc: ("%.2f" % proc.data.reserved_cores),
             tip="The number of cores reserved.")
         self.addColumn(
+            "Threads", 50, id=10, data=lambda proc: ("%d" % getattr(proc.data, 'reserved_threads', 0)),
+            tip="The number of threads reserved.")
+        self.addColumn(
             "Mem Reserved", 100, id=3,
             data=lambda proc: cuegui.Utils.memoryToString(proc.data.reserved_memory),
             tip="The amount of memory reserved.")
