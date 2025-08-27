@@ -264,7 +264,24 @@ public class LayerDaoTests extends AbstractTransactionalJUnit4SpringContextTests
         assertFalse(jdbcTemplate.queryForObject("SELECT b_threadable FROM layer WHERE pk_layer=?",
                 Boolean.class, layer.getLayerId()));
     }
+/*
+    @Test
+    @Transactional
+    @Rollback(true)
+    public void testUpdateLayerUseThreads() {
+        LayerDetail layer = getLayer();
 
+        // Test setting useThreads to true
+        layerDao.updateUseThreads(layer, true);
+        assertTrue(jdbcTemplate.queryForObject("SELECT b_use_threads FROM layer WHERE pk_layer=?",
+                Boolean.class, layer.getLayerId()));
+
+        // Test setting useThreads to false
+        layerDao.updateUseThreads(layer, false);
+        assertFalse(jdbcTemplate.queryForObject("SELECT b_use_threads FROM layer WHERE pk_layer=?",
+                Boolean.class, layer.getLayerId()));
+    }
+*/
     @Test
     @Transactional
     @Rollback(true)
@@ -650,6 +667,24 @@ public class LayerDaoTests extends AbstractTransactionalJUnit4SpringContextTests
         assertTrue(layerDao.isThreadable(layer));
     }
 
+/*
+    @Test
+    @Transactional
+    @Rollback(true)
+    public void isLayerUsingThreads() {
+        LayerDetail layer = getLayer();
+
+        // Test default state (should be false)
+        jdbcTemplate.update("UPDATE layer set b_use_threads = false WHERE pk_layer = ?",
+                layer.getId());
+        assertFalse(layerDao.isUseThreads(layer));
+
+        // Test when set to true
+        jdbcTemplate.update("UPDATE layer set b_use_threads = true WHERE pk_layer = ?",
+                layer.getId());
+        assertTrue(layerDao.isUseThreads(layer));
+    }
+*/
     @Test
     @Transactional
     @Rollback(true)
