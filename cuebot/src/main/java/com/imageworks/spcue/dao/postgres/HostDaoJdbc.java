@@ -71,6 +71,8 @@ public class HostDaoJdbc extends JdbcDaoSupport implements HostDao {
             host.unlockAtBoot = rs.getBoolean("b_unlock_boot");
             host.cores = rs.getInt("int_cores");
             host.idleCores = rs.getInt("int_cores_idle");
+            host.threads = rs.getInt("int_threads");
+            host.idleThreads = rs.getInt("int_threads_idle");
             host.memory = rs.getLong("int_mem");
             host.idleMemory = rs.getLong("int_mem_idle");
             host.gpus = rs.getInt("int_gpus");
@@ -117,7 +119,7 @@ public class HostDaoJdbc extends JdbcDaoSupport implements HostDao {
 
     private static final String GET_HOST_DETAIL = "SELECT " + "host.pk_host, " + "host.pk_alloc,"
             + "host.str_lock_state," + "host.b_nimby," + "host.b_unlock_boot," + "host.int_cores,"
-            + "host.int_cores_idle," + "host.int_mem," + "host.int_mem_idle," + "host.int_gpus,"
+            + "host.int_cores_idle," + "host.int_threads," + "host.int_threads_idle," + "host.int_mem," + "host.int_mem_idle," + "host.int_gpus,"
             + "host.int_gpus_idle," + "host.int_gpu_mem," + "host.int_gpu_mem_idle,"
             + "host.ts_created," + "host.str_name, " + "host_stat.str_state," + "host_stat.ts_ping,"
             + "host_stat.ts_booted, " + "alloc.pk_facility " + "FROM " + "host, " + "alloc, "
@@ -189,9 +191,11 @@ public class HostDaoJdbc extends JdbcDaoSupport implements HostDao {
                     host.memory = rs.getLong("int_mem");
                     host.cores = rs.getInt("int_cores");
                     host.gpus = rs.getInt("int_gpus");
+                    host.threads = rs.getInt("int_threads");
                     host.gpuMemory = rs.getLong("int_gpu_mem");
                     host.idleMemory = rs.getLong("int_mem_idle");
                     host.idleCores = rs.getInt("int_cores_idle");
+                    host.idleThreads = rs.getInt("int_threads_idle");
                     host.idleGpuMemory = rs.getLong("int_gpu_mem_idle");
                     host.idleGpus = rs.getInt("int_gpus_idle");
                     host.isNimby = rs.getBoolean("b_nimby");
@@ -205,7 +209,7 @@ public class HostDaoJdbc extends JdbcDaoSupport implements HostDao {
 
     public static final String GET_DISPATCH_HOST = "SELECT " + "host.pk_host," + "host.pk_alloc,"
             + "host.str_name," + "host.str_lock_state, " + "host.int_cores, "
-            + "host.int_cores_idle, " + "host.int_mem," + "host.int_mem_idle, " + "host.int_gpus, "
+            + "host.int_cores_idle, " + "host.int_threads, " + "host.int_threads_idle, " + "host.int_mem," + "host.int_mem_idle, " + "host.int_gpus, "
             + "host.int_gpus_idle, " + "host.int_gpu_mem," + "host.int_gpu_mem_idle, "
             + "host.b_nimby, " + "host.int_thread_mode, " + "host.str_tags, " + "host_stat.str_os, "
             + "host_stat.str_state, " + "alloc.pk_facility " + "FROM " + "host "
@@ -232,9 +236,9 @@ public class HostDaoJdbc extends JdbcDaoSupport implements HostDao {
     private static final String[] INSERT_HOST_DETAIL = {
             "INSERT INTO " + "host " + "(" + "pk_host, " + "pk_alloc, " + "str_name, " + "b_nimby, "
                     + "str_lock_state, " + "int_procs," + "int_cores, " + "int_cores_idle, "
-                    + "int_mem," + "int_mem_idle," + "int_gpus, " + "int_gpus_idle, "
+                    + "int_threads, " + "int_threads_idle, " + "int_mem," + "int_mem_idle," + "int_gpus, " + "int_gpus_idle, "
                     + "int_gpu_mem," + "int_gpu_mem_idle," + "str_fqdn, " + "int_thread_mode "
-                    + ") " + "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    + ") " + "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
 
             "INSERT INTO " + "host_stat " + "(" + "pk_host_stat," + "pk_host," + "int_mem_total, "
                     + "int_mem_free," + "int_gpu_mem_total, " + "int_gpu_mem_free,"
@@ -282,6 +286,7 @@ public class HostDaoJdbc extends JdbcDaoSupport implements HostDao {
 
         String hid = SqlUtil.genKeyRandom();
         int coreUnits = host.getNumProcs() * host.getCoresPerProc();
+        int threadUnits = coreUnits * 2; // Assume 2 threads per core (hyperthreading)
         String os = host.getAttributesMap().get("SP_OS");
         if (os == null) {
             os = Dispatcher.OS_DEFAULT;
@@ -289,7 +294,7 @@ public class HostDaoJdbc extends JdbcDaoSupport implements HostDao {
 
         getJdbcTemplate().update(INSERT_HOST_DETAIL[0], hid, a.getAllocationId(), name,
                 host.getNimbyEnabled(), LockState.OPEN.toString(), host.getNumProcs(), coreUnits,
-                coreUnits, memUnits, memUnits, host.getNumGpus(), host.getNumGpus(),
+                coreUnits, threadUnits, threadUnits, memUnits, memUnits, host.getNumGpus(), host.getNumGpus(),
                 host.getTotalGpuMem(), host.getTotalGpuMem(), fqdn, threadMode.getNumber());
 
         getJdbcTemplate().update(INSERT_HOST_DETAIL[1], hid, hid, host.getTotalMem(),
@@ -346,16 +351,17 @@ public class HostDaoJdbc extends JdbcDaoSupport implements HostDao {
 
         long memory = convertMemoryUnits(report.getHost());
         int cores = report.getHost().getNumProcs() * report.getHost().getCoresPerProc();
+        int threads = cores * 2; // Assume 2 threads per core (hyperthreading)
         long gpu_memory = report.getHost().getTotalGpuMem();
         int gpus = report.getHost().getNumGpus();
 
         getJdbcTemplate().update(
                 "UPDATE " + "host " + "SET " + "b_nimby=?," + "int_cores=?," + "int_cores_idle=?,"
-                        + "int_mem=?," + "int_mem_idle=?, " + "int_gpus=?," + "int_gpus_idle=?,"
+                        + "int_threads=?," + "int_threads_idle=?," + "int_mem=?," + "int_mem_idle=?, " + "int_gpus=?," + "int_gpus_idle=?,"
                         + "int_gpu_mem=?," + "int_gpu_mem_idle=? " + "WHERE " + "pk_host=? "
-                        + "AND " + "int_cores = int_cores_idle " + "AND "
+                        + "AND " + "int_cores = int_cores_idle " + "AND " + "int_threads = int_threads_idle " + "AND "
                         + "int_mem = int_mem_idle " + "AND " + "int_gpus = int_gpus_idle",
-                report.getHost().getNimbyEnabled(), cores, cores, memory, memory, gpus, gpus,
+                report.getHost().getNimbyEnabled(), cores, cores, threads, threads, memory, memory, gpus, gpus,
                 gpu_memory, gpu_memory, host.getId());
     }
 
