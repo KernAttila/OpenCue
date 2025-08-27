@@ -26,6 +26,7 @@ export type LayerStats = {
   failedCoreSec: string;
   maxRss: string;
   reservedCores: number;
+  reservedThreads: number;
   totalGpuSec: string;
   renderedGpuSec: string;
   failedGpuSec: string;
@@ -40,6 +41,9 @@ export type Layer = {
   tags: string[];
   minCores: number;
   maxCores: number;
+  minThreads: number;
+  maxThreads: number;
+  useThreads: boolean;
   isThreadable: boolean;
   minMemory: string;
   minGpuMemory: string;
@@ -94,6 +98,11 @@ export const layerColumns: ColumnDef<Layer>[] = [
   {
     accessorKey: "minCores",
     header: ({ column }) => renderHeader("Cores", column),
+  },
+  {
+    accessorKey: "minThreads",
+    header: ({ column }) => renderHeader("Threads", column),
+    cell: ({ row }) => row.original.useThreads ? row.original.minThreads : "N/A",
   },
   {
     id: "minMemory",
