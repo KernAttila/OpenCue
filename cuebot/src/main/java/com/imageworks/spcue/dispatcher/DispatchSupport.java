@@ -486,6 +486,23 @@ public interface DispatchSupport {
     void determineIdleCores(DispatchHost host, int load);
 
     /**
+     * Determine the number of idle threads on a host based on its current load.
+     *
+     * @param host DispatchHost
+     * @param load int
+     */
+    void determineIdleThreads(DispatchHost host, int load);
+
+    /**
+     * Unified method to determine idle compute units (cores and threads) based on load.
+     * This eliminates the need to call both determineIdleCores and determineIdleThreads.
+     *
+     * @param host DispatchHost
+     * @param load int
+     */
+    void determineIdleComputeUnits(DispatchHost host, int load);
+
+    /**
      * Return a set of job IDs that can take the given host.
      *
      * @param host
