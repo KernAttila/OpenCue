@@ -121,6 +121,14 @@ public class LayerDaoJdbc extends JdbcDaoSupport implements LayerDao {
         return getJdbcTemplate().queryForObject(IS_THREADABLE, Boolean.class, l.getLayerId());
     }
 
+    private static final String IS_USING_THREADS =
+            "SELECT " + "b_use_threads " + "FROM " + "layer " + "WHERE " + "pk_layer = ?";
+
+    @Override
+    public boolean isUseThreads(LayerInterface l) {
+        return getJdbcTemplate().queryForObject(IS_USING_THREADS, Boolean.class, l.getLayerId());
+    }
+
     /**
      * Query for layers table. Where clauses are appended later
      */
@@ -152,6 +160,8 @@ public class LayerDaoJdbc extends JdbcDaoSupport implements LayerDao {
             layer.minimumMemory = rs.getLong("int_mem_min");
             layer.minimumGpus = rs.getInt("int_gpus_min");
             layer.minimumGpuMemory = rs.getLong("int_gpu_mem_min");
+            layer.isThreadable = rs.getBoolean("b_threadable");
+            layer.useThreads = rs.getBoolean("b_use_threads");
             layer.type = LayerType.valueOf(rs.getString("str_type"));
             layer.tags = Sets.newHashSet(rs.getString("str_tags").replaceAll(" ", "").split("\\|"));
             layer.services.addAll(Lists.newArrayList(rs.getString("str_services").split(",")));
@@ -238,16 +248,16 @@ public class LayerDaoJdbc extends JdbcDaoSupport implements LayerDao {
     private static final String INSERT_LAYER = "INSERT INTO " + "layer " + "(" + "pk_layer, "
             + "pk_job, " + "str_name, " + "str_cmd, " + "str_range, " + "int_chunk_size, "
             + "int_dispatch_order, " + "str_tags, " + "str_type," + "int_cores_min, "
-            + "int_cores_max, " + "b_threadable, " + "int_mem_min, " + "int_gpus_min, "
+            + "int_cores_max, " + "b_threadable, " + "b_use_threads, " + "int_mem_min, " + "int_gpus_min, "
             + "int_gpus_max, " + "int_gpu_mem_min, " + "str_services, " + "int_timeout,"
-            + "int_timeout_llu " + ") " + "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+            + "int_timeout_llu " + ") " + "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
     @Override
     public void insertLayerDetail(LayerDetail l) {
         l.id = SqlUtil.genKeyRandom();
         getJdbcTemplate().update(INSERT_LAYER, l.id, l.jobId, l.name, l.command, l.range,
                 l.chunkSize, l.dispatchOrder, StringUtils.join(l.tags, " | "), l.type.toString(),
-                l.minimumCores, l.maximumCores, l.isThreadable, l.minimumMemory, l.minimumGpus,
+                l.minimumCores, l.maximumCores, l.isThreadable, l.useThreads, l.minimumMemory, l.minimumGpus,
                 l.maximumGpus, l.minimumGpuMemory, StringUtils.join(l.services, ","), l.timeout,
                 l.timeout_llu);
     }
@@ -530,6 +540,12 @@ public class LayerDaoJdbc extends JdbcDaoSupport implements LayerDao {
     @Override
     public void updateThreadable(LayerInterface layer, boolean threadable) {
         getJdbcTemplate().update("UPDATE layer SET b_threadable=? WHERE pk_layer=?", threadable,
+                layer.getLayerId());
+    }
+
+    @Override
+    public void updateUseThreads(LayerInterface layer, boolean useThreads) {
+        getJdbcTemplate().update("UPDATE layer SET b_use_threads=? WHERE pk_layer=?", useThreads,
                 layer.getLayerId());
     }
 
