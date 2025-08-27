@@ -20,6 +20,9 @@ export type Frame = {
   usedMemory: string;
   reservedMemory: string;
   reservedGpuMemory: string;
+  reservedCores: number;
+  reservedThreads: number;
+  useThreads: boolean;
   lastResource: string;
   checkpointState: string;
   checkpointCount: number;
@@ -32,8 +35,17 @@ export type Frame = {
 };
 
 const getFrameCores = (frame: Frame) => {
-  const parts = frame.lastResource.split("/");
-  return parts.length > 1 ? parts[1] : "N/A";
+  if (frame.useThreads) {
+    return "N/A";
+  }
+  return frame.reservedCores ? frame.reservedCores.toString() : "N/A";
+};
+
+const getFrameThreads = (frame: Frame) => {
+  if (!frame.useThreads) {
+    return "N/A";
+  }
+  return frame.reservedThreads ? frame.reservedThreads.toString() : "N/A";
 };
 
 const getFrameGpus = (frame: Frame) => {
@@ -89,6 +101,11 @@ export const frameColumns: ColumnDef<Frame>[] = [
     accessorKey: "cores",
     header: ({ column }) => <SortingButton column={column} label="Cores" />,
     cell: ({ row }) => getFrameCores(row.original),
+  },
+  {
+    accessorKey: "threads",
+    header: ({ column }) => <SortingButton column={column} label="Threads" />,
+    cell: ({ row }) => getFrameThreads(row.original),
   },
   {
     accessorKey: "gpus",
