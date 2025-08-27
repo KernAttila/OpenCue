@@ -32,6 +32,8 @@ public class HostEntity extends Entity implements HostInterface {
     public int procs;
     public int cores;
     public int idleCores;
+    public int threads;
+    public int idleThreads;
     public long memory;
     public long idleMemory;
     public int gpus;
@@ -55,6 +57,8 @@ public class HostEntity extends Entity implements HostInterface {
         this.nimbyEnabled = grpcHost.getNimbyEnabled();
         this.cores = (int) grpcHost.getCores();
         this.idleCores = (int) grpcHost.getIdleCores();
+        this.threads = grpcHost.getThreads();
+        this.idleThreads = grpcHost.getIdleThreads();
         this.memory = grpcHost.getMemory();
         this.idleMemory = grpcHost.getIdleMemory();
         this.gpus = (int) grpcHost.getGpus();

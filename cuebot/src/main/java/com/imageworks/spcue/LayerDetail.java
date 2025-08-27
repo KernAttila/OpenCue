@@ -31,6 +31,7 @@ public class LayerDetail extends LayerEntity implements LayerInterface {
     public int minimumGpus;
     public int maximumGpus;
     public boolean isThreadable;
+    public boolean useThreads;
     public long minimumMemory;
     public long minimumGpuMemory;
     public int chunkSize;
@@ -89,6 +90,14 @@ public class LayerDetail extends LayerEntity implements LayerInterface {
 
     public void setThreadable(boolean isThreadable) {
         this.isThreadable = isThreadable;
+    }
+
+    public boolean isUsingThreads() {
+        return useThreads;
+    }
+
+    public void setUseThreads(boolean useThreads) {
+        this.useThreads = useThreads;
     }
 
     public int getTimeout() {
