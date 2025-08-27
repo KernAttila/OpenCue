@@ -287,12 +287,21 @@ public interface LayerDao {
     void updateMinGpus(JobInterface job, int gpus, LayerType type);
 
     /**
-     * Update a layer's max cores value, which limits how much threading can go on.
+     * Update a layer's threadable flag, which determines if threading is allowed.
      *
      * @param layer
      * @param threadable
      */
     void updateThreadable(LayerInterface layer, boolean threadable);
+
+    /**
+     * Update a layer's use_threads flag, which determines if the layer requests
+     * logical threads (true) or physical cores (false).
+     *
+     * @param layer
+     * @param useThreads
+     */
+    void updateUseThreads(LayerInterface layer, boolean useThreads);
 
     /**
      * Update a layer's timeout value, which limits how much the frame can run on a host.
@@ -364,6 +373,14 @@ public interface LayerDao {
      * @return
      */
     boolean isThreadable(LayerInterface l);
+
+    /**
+     * Return true if the layer is set to use logical threads instead of physical cores.
+     *
+     * @param l LayerInterface
+     * @return boolean
+     */
+    boolean isUseThreads(LayerInterface l);
 
     /**
      * Enable/disable memory optimizer.
