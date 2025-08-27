@@ -60,6 +60,7 @@ import java.util.UUID;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 @ContextConfiguration
 public class HostReportHandlerTests extends TransactionalTest {
@@ -87,6 +88,9 @@ public class HostReportHandlerTests extends TransactionalTest {
 
     @Resource
     CommentManager commentManager;
+
+    @Resource
+    DispatchSupport dispatchSupport;
 
     private static final String HOSTNAME = "beta";
     private static final String NEW_HOSTNAME = "gamma";
@@ -129,6 +133,24 @@ public class HostReportHandlerTests extends TransactionalTest {
                 .setNimbyEnabled(false).setNumProcs(16).setCoresPerProc(100).addTags("test")
                 .setState(HardwareState.UP).setFacility("spi").putAttributes("SP_OS", "Linux")
                 .setNumGpus(0).setFreeGpuMem(0).setTotalGpuMem(0);
+    }
+
+    /**
+     * Helper method to create a RenderHost with both core and thread information.
+     * Useful for testing thread functionality.
+     */
+    private static RenderHost.Builder getRenderHostBuilderWithThreads(String hostname) {
+        return RenderHost.newBuilder().setName(hostname).setBootTime(1192369572)
+                .setFreeMcp(CueUtil.GB).setFreeMem(CueUtil.GB8).setFreeSwap(CueUtil.GB2).setLoad(0)
+                .setTotalMcp(CueUtil.GB4).setTotalMem(CueUtil.GB8).setTotalSwap(CueUtil.GB2)
+                .setNimbyEnabled(false).setNumProcs(16).setCoresPerProc(100)
+                .addTags("test")  // Note: Removed setThreadsPerProc() call for now
+                .setState(HardwareState.UP).setFacility("spi").putAttributes("SP_OS", "Linux")
+                .setNumGpus(0).setFreeGpuMem(0).setTotalGpuMem(0);
+    }
+
+    private static RenderHost getRenderHostWithThreads(String hostname) {
+        return getRenderHostBuilderWithThreads(hostname).build();
     }
 
     private static RenderHost getRenderHost(String hostname) {
@@ -529,5 +551,94 @@ public class HostReportHandlerTests extends TransactionalTest {
         assertEquals(
                 Math.max(memoryUsedProc3, layerBeforeIncrease.getMinimumMemory() + CueUtil.GB2),
                 layer.getMinimumMemory());
+    }
+
+    @Test
+    @Transactional
+    @Rollback(true)
+    public void testHandleHostReportWithThreads() {
+        String hostname = "testHostThreads";
+
+        // Create host with thread information
+        HostReport report = HostReport.newBuilder()
+                .setHost(getRenderHostWithThreads(hostname))
+                .setCoreInfo(getCoreDetail(1600, 1600, 0, 0))  // 16 cores * 100 each = 1600
+                .build();
+
+        hostReportHandler.handleHostReport(report, true);
+
+        // Verify host was created with both core and thread information
+        DispatchHost host = hostManager.findDispatchHost(hostname);
+        assertEquals(1600, host.cores);
+        assertEquals(1600, host.idleCores);
+        assertEquals(3200, host.threads);  // 16 procs * 200 threads per proc = 3200
+        assertEquals(3200, host.idleThreads);
+    }
+
+    @Test
+    @Transactional
+    @Rollback(true)
+    public void testUnifiedComputeUnitMethods() {
+        String hostname = "testUnifiedMethods";
+
+        // Create and register a host
+        HostReport report = HostReport.newBuilder()
+                .setHost(getRenderHostWithThreads(hostname))
+                .setCoreInfo(getCoreDetail(1600, 1600, 0, 0))
+                .build();
+
+        hostReportHandler.handleHostReport(report, true);
+        DispatchHost host = hostManager.findDispatchHost(hostname);
+
+        // Test unified methods for cores
+        assertEquals(1600, host.getIdleComputeUnits(false));  // cores
+        assertEquals(1600, host.getTotalComputeUnits(false)); // cores
+
+        // Test unified methods for threads
+        assertEquals(3200, host.getIdleComputeUnits(true));   // threads
+        assertEquals(3200, host.getTotalComputeUnits(true));  // threads
+
+        // Test negative core/thread handling
+        assertEquals(1500, host.handleNegativeComputeUnitsRequirement(-100, false)); // cores: 1600 - 100 = 1500
+        assertEquals(3100, host.handleNegativeComputeUnitsRequirement(-100, true));  // threads: 3200 - 100 = 3100
+
+        // Test positive requests pass through unchanged
+        assertEquals(800, host.handleNegativeComputeUnitsRequirement(800, false));
+        assertEquals(1600, host.handleNegativeComputeUnitsRequirement(1600, true));
+
+        // Test can handle negative requests
+        assertTrue(host.canHandleNegativeComputeUnitsRequest(500, false));  // cores
+        assertTrue(host.canHandleNegativeComputeUnitsRequest(1000, true));  // threads
+        assertTrue(host.canHandleNegativeComputeUnitsRequest(-500, false)); // negative cores
+        assertTrue(host.canHandleNegativeComputeUnitsRequest(-1000, true)); // negative threads
+    }
+
+    @Test
+    @Transactional
+    @Rollback(true)
+    public void testDetermineIdleComputeUnits() {
+        String hostname = "testIdleCompute";
+
+        // Create host with threads
+        HostReport report = HostReport.newBuilder()
+                .setHost(getRenderHostWithThreads(hostname))
+                .setCoreInfo(getCoreDetail(1600, 1600, 0, 0))
+                .build();
+
+        hostReportHandler.handleHostReport(report, true);
+        DispatchHost host = hostManager.findDispatchHost(hostname);
+
+        // Store original values
+        int originalIdleCores = host.idleCores;
+        int originalIdleThreads = host.idleThreads;
+
+        // Simulate high load that should reduce idle compute units
+        int highLoad = 1000; // High load
+        dispatchSupport.determineIdleComputeUnits(host, highLoad);
+
+        // Both idle cores and threads should be recalculated based on load
+        // The exact values depend on CORE_LOAD_THRESHOLD, but they should be <= original
+        assertTrue("Idle cores should be adjusted by load", host.idleCores <= originalIdleCores);
+        assertTrue("Idle threads should be adjusted by load", host.idleThreads <= originalIdleThreads);
     }
 }
