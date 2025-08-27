@@ -106,6 +106,15 @@ class HostMonitorTree(cuegui.AbstractTreeWidget.AbstractTreeWidget):
                        data=lambda host: "%.2f" % host.data.idle_cores,
                        sort=lambda host: host.data.idle_cores,
                        tip="The number of cores that are not reserved.")
+        self.addColumn("Threads", 60, id=21,
+                       data=lambda host: "%d" % host.data.threads,
+                       sort=lambda host: host.data.threads,
+                       tip="The total number of logical threads.\n\n"
+                           "This represents the hyperthreaded capacity of the host.")
+        self.addColumn("Idle Threads", 60, id=22,
+                       data=lambda host: "%d" % host.data.idle_threads,
+                       sort=lambda host: host.data.idle_threads,
+                       tip="The number of threads that are not reserved.")
         self.addColumn("GPUs", 50, id=12,
                        data=lambda host: "%d" % host.data.gpus,
                        sort=lambda host: host.data.gpus,
