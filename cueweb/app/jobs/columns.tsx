@@ -27,6 +27,7 @@ export type JobStats = {
   renderedFrameCount: string;
   renderedGpuSec: string;
   reservedCores: number;
+  reservedThreads: number;
   reservedGpus: number;
   runningFrames: number;
   succeededFrames: number;
@@ -48,8 +49,10 @@ export type Job = {
   logDir: string;
   maxCores: number;
   maxGpus: number;
+  maxThreads: number;
   minCores: number;
   minGpus: number;
+  minThreads: number;
   name: string;
   os: string;
   priority: number;
