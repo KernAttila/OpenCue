@@ -372,6 +372,42 @@ class JobActions(AbstractActions):
                     job.setMaxGpus(int(value))
                 self._update()
 
+    setMinThreads_info = ["Set Minimum Threads...", "Set Job(s) Minimum Threads", "configure"]
+
+    def setMinThreads(self, rpcObjects=None):
+        jobs = self._getOnlyJobObjects(rpcObjects)
+        if jobs:
+            current = max([getattr(job.data, 'min_threads', 0) for job in jobs])
+            title = "Set Minimum Threads"
+            body = "Please enter the new minimum threads value:"
+            (value, choice) = QtWidgets.QInputDialog.getInt(self._caller,
+                                                            title, body,
+                                                            current,
+                                                            0, 50000, 1)
+            if choice:
+                for job in jobs:
+                    if hasattr(job, 'setMinThreads'):
+                        job.setMinThreads(int(value))
+                self._update()
+
+    setMaxThreads_info = ["Set Maximum Threads...", "Set Job(s) Maximum Threads", "configure"]
+
+    def setMaxThreads(self, rpcObjects=None):
+        jobs = self._getOnlyJobObjects(rpcObjects)
+        if jobs:
+            current = max([getattr(job.data, 'max_threads', 10000) for job in jobs])
+            title = "Set Maximum Threads"
+            body = "Please enter the new maximum threads value:"
+            (value, choice) = QtWidgets.QInputDialog.getInt(self._caller,
+                                                            title, body,
+                                                            current,
+                                                            0, 50000, 1)
+            if choice:
+                for job in jobs:
+                    if hasattr(job, 'setMaxThreads'):
+                        job.setMaxThreads(int(value))
+                self._update()
+
     setPriority_info = ["Set Priority...", None, "configure"]
 
     def setPriority(self, rpcObjects=None):
