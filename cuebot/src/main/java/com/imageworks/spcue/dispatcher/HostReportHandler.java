@@ -195,7 +195,8 @@ public class HostReportHandler {
                     hostManager.setHostResources(host, report);
                 }
 
-                dispatchSupport.determineIdleCores(host, report.getHost().getLoad());
+                dispatchSupport.determineIdleComputeUnits(host, report.getHost().getLoad());
+                dispatchSupport.determineIdleThreads(host, report.getHost().getLoad());
             } catch (DataAccessException dae) {
                 logger.info(
                         "Unable to find host " + rhost.getName() + "," + dae + " , creating host.");
