@@ -572,6 +572,23 @@ public class DispatchSupportService implements DispatchSupport {
         }
     }
 
+    @Override
+    public void determineIdleThreads(DispatchHost host, int load) {
+        int maxLoad = host.threads + ((host.threads / 100) * Dispatcher.CORE_LOAD_THRESHOLD);
+
+        int idleThreads = maxLoad - load;
+        if (idleThreads < host.idleThreads) {
+            host.idleThreads = idleThreads;
+        }
+    }
+
+    @Override
+    public void determineIdleComputeUnits(DispatchHost host, int load) {
+        // Unified method that handles both cores and threads
+        determineIdleCores(host, load);
+        determineIdleThreads(host, load);
+    }
+
     public DispatcherDao getDispatcherDao() {
         return dispatcherDao;
     }
