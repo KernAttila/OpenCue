@@ -274,6 +274,8 @@ message Host {
     ThreadMode thread_mode = 27;
     float gpus = 28;
     float idle_gpus = 29;
+    int32 threads = 30;
+    int32 idle_threads = 31;
 }
 
 message HostSearchCriteria {
@@ -321,6 +323,8 @@ message NestedHost {
     NestedProcSeq procs = 28;
     float gpus = 29;
     float idle_gpus = 30;
+    int32 threads = 31;
+    int32 idle_threads = 32;
 }
 
 message NestedHostSeq {
