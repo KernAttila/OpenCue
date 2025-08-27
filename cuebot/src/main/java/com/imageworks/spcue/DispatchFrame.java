@@ -39,7 +39,11 @@ public class DispatchFrame extends FrameEntity implements FrameInterface {
 
     public int minCores;
     public int maxCores;
+    //refactor: maybe not use threads here as we unified with computeUnits ?
+    public int minThreads;
+    public int maxThreads;
     public boolean threadable;
+    public boolean useThreads;
     public int minGpus;
     public int maxGpus;
     public long minGpuMemory;
@@ -67,6 +71,33 @@ public class DispatchFrame extends FrameEntity implements FrameInterface {
 
     public long getMinMemory() {
         return this.minMemory;
+    }
+
+    /**
+     * Unified method to get minimum compute units required (cores or threads).
+     *
+     * @return int - minimum compute units based on useThreads flag
+     */
+    public int getMinComputeUnits() {
+        return useThreads ? minThreads : minCores;
+    }
+
+    /**
+     * Unified method to get maximum compute units allowed (cores or threads).
+     *
+     * @return int - maximum compute units based on useThreads flag (0 means no limit)
+     */
+    public int getMaxComputeUnits() {
+        return useThreads ? maxThreads : maxCores;
+    }
+
+    /**
+     * Get the compute units type name for logging/debugging.
+     *
+     * @return String - "threads" or "cores"
+     */
+    public String getComputeUnitsType() {
+        return useThreads ? "threads" : "cores";
     }
 
     // Parameters to tell rqd whether or not to use Loki for frame logs and which base url to use
