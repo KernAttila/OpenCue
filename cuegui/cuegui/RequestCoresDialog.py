@@ -108,12 +108,14 @@ class EmailCoresWidget(QtWidgets.QWidget):
             self.__job.group(),
         )
         __default_body += "\n" + self.EMAIL_REQUEST_CORES_BODY_LAYERS_PREFIX
-        __default_body += "\n\nLayer Name\t\tMinimum Memory\tMin Cores"
+        __default_body += "\n\nLayer Name\t\tMinimum Memory\tMin Cores\tUse Threads"
         for layer in self.__job.getLayers():
-            __default_body += "\n%s\t\t%s\t\t%s" % (
+            use_threads = getattr(layer.data, 'use_threads', False)
+            __default_body += "\n%s\t\t%s\t\t%s\t\t%s" % (
                 layer.name(),
                 layer.minMemory(),
                 layer.data.min_cores,
+                "Yes" if use_threads else "No",
             )
 
         self.__btnSend = QtWidgets.QPushButton("Send", self)
@@ -212,8 +214,9 @@ class EmailCoresWidget(QtWidgets.QWidget):
         )
         layers_data = ""
         for layer in self.__job.getLayers():
+            use_threads = getattr(layer.data, 'use_threads', False)
             layers_data += self.EMAIL_REQUEST_CORES_HTML_BODY_TABLE_LAYERS.format(
-                layer.name(), layer.minMemory(), layer.data.min_cores
+                layer.name(), layer.minMemory(), layer.data.min_cores, "Yes" if use_threads else "No"
             )
 
         date_time_info = self.__email_body_user_date_info.toPlainText()
@@ -322,7 +325,7 @@ class EmailCoresWidget(QtWidgets.QWidget):
         "Add any additional notes (flag priority frames etc.):\n "
     )
     EMAIL_REQUEST_CORES_HTML_BODY_TABLE_LAYERS = (
-        "<tr>\n<td>{0}</td><td>{1}</td><td>{2}</td>\n<tr>\n"
+        "<tr>\n<td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td>\n<tr>\n"
     )
     EMAIL_REQUEST_CORES_USER_HTML_BODY_PREFIX = """
         <p><b>Requesting more cores for:</b></p>
@@ -350,6 +353,7 @@ class EmailCoresWidget(QtWidgets.QWidget):
                 <td><u>Layer Name</u></td>
                 <td><u>Minimum Memory</u></td>
                 <td><u>Minimum Cores</u></td>
+                <td><u>Use Threads</u></td>
             </tr>
             {1}
         </table>
