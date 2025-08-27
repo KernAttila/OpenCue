@@ -36,6 +36,9 @@ public class DispatchHost extends Entity
     public int cores;
     public int idleCores;
 
+    public int threads;
+    public int idleThreads;
+
     public int gpus;
     public int idleGpus;
 
@@ -61,6 +64,7 @@ public class DispatchHost extends Entity
     // To reserve resources for future gpu job
     long idleMemoryOrig = 0;
     int idleCoresOrig = 0;
+    int idleThreadsOrig = 0;
     long idleGpuMemoryOrig = 0;
     int idleGpusOrig = 0;
 
@@ -152,6 +156,49 @@ public class DispatchHost extends Entity
     }
 
     /**
+     * Unified method to check available resources for either cores or threads.
+     *
+     * @param frame DispatchFrame - frame containing resource requirements
+     * @return boolean - whether host has sufficient resources
+     */
+    public boolean hasAdditionalResources(DispatchFrame frame) {
+        int minComputeUnits = handleNegativeComputeUnitsRequirement(frame.getMinComputeUnits(), frame.useThreads);
+        int idleComputeUnits = getIdleComputeUnits(frame.useThreads);
+
+        if (idleComputeUnits < minComputeUnits) {
+            return false;
+        }
+        if (minComputeUnits <= 0) {
+            return false;
+        } else if (idleMemory < frame.getMinMemory()) {
+            return false;
+        } else if (idleGpus < frame.minGpus) {
+            return false;
+        } else if (idleGpuMemory < frame.minGpuMemory) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Unified method to consume resources for either cores or threads.
+     *
+     * @param frame DispatchFrame - frame containing resource requirements
+     * @param computeUnits int - actual compute units to consume
+     */
+    public void useResources(DispatchFrame frame, int computeUnits) {
+        if (frame.useThreads) {
+            idleThreads = idleThreads - computeUnits;
+        } else {
+            idleCores = idleCores - computeUnits;
+        }
+        idleMemory = idleMemory - frame.getMinMemory();
+        idleGpus = idleGpus - frame.minGpus;
+        idleGpuMemory = idleGpuMemory - frame.minGpuMemory;
+    }
+
+    /**
      * If host has idle gpu, remove enough resources to book a gpu frame later.
      *
      */
@@ -177,13 +224,89 @@ public class DispatchHost extends Entity
         if (idleGpuMemoryOrig > 0) {
             idleMemory = idleMemoryOrig;
             idleCores = idleCoresOrig;
+            idleThreads = idleThreadsOrig;
             idleGpuMemory = idleGpuMemoryOrig;
             idleGpus = idleGpusOrig;
 
             idleMemoryOrig = 0;
             idleCoresOrig = 0;
+            idleThreadsOrig = 0;
             idleGpuMemoryOrig = 0;
             idleGpusOrig = 0;
         }
+    }
+
+    /**
+     * Unified method to get available compute units (cores or threads).
+     *
+     * @param useThreads boolean - whether to return threads (true) or cores (false)
+     * @return int - available compute units
+     */
+    public int getIdleComputeUnits(boolean useThreads) {
+        return useThreads ? idleThreads : idleCores;
+    }
+
+    /**
+     * Unified method to get total compute units (cores or threads).
+     *
+     * @param useThreads boolean - whether to return threads (true) or cores (false)
+     * @return int - total compute units
+     */
+    public int getTotalComputeUnits(boolean useThreads) {
+        return useThreads ? threads : cores;
+    }
+
+    /**
+     * Unified method to handle negative compute unit requests (cores or threads).
+     *
+     * @param requestedUnits int - requested compute units (can be negative)
+     * @param useThreads boolean - whether to use threads (true) or cores (false)
+     * @return int - actual units to allocate
+     */
+    public int handleNegativeComputeUnitsRequirement(int requestedUnits, boolean useThreads) {
+        int idleUnits = getIdleComputeUnits(useThreads);
+
+        if (requestedUnits > 0) {
+            logger.debug("Requested " + requestedUnits + " " + (useThreads ? "threads" : "cores"));
+            return requestedUnits;
+        }
+
+        int totalUnits = getTotalComputeUnits(useThreads);
+        if (requestedUnits <= 0 && idleUnits < totalUnits) {
+            logger.debug("Requested " + requestedUnits + " " + (useThreads ? "threads" : "cores")
+                    + ", but the host is busy and cannot book more jobs.");
+            return 0;
+        }
+
+        int result = idleUnits + requestedUnits;
+        logger.debug("Requested " + requestedUnits + " " + (useThreads ? "threads" : "cores")
+                + " <= 0, " + idleUnits + " " + (useThreads ? "threads" : "cores")
+                + " are free, booking " + result + " " + (useThreads ? "threads" : "cores"));
+        return result;
+    }
+
+    /**
+     * Unified method to check if host can handle negative compute unit requests.
+     *
+     * @param requestedUnits int - requested compute units
+     * @param useThreads boolean - whether to use threads (true) or cores (false)
+     * @return boolean - whether the request can be handled
+     */
+    public boolean canHandleNegativeComputeUnitsRequest(int requestedUnits, boolean useThreads) {
+        if (requestedUnits > 0) {
+            logger.debug(getName() + " can handle the job with " + requestedUnits + " " + (useThreads ? "threads" : "cores"));
+            return true;
+        }
+
+        int idleUnits = getIdleComputeUnits(useThreads);
+        int totalUnits = getTotalComputeUnits(useThreads);
+
+        if (totalUnits == idleUnits) {
+            logger.debug(getName() + " can handle the job with " + requestedUnits + " " + (useThreads ? "threads" : "cores"));
+            return true;
+        }
+
+        logger.debug(getName() + " cannot handle the job with " + requestedUnits + " " + (useThreads ? "threads" : "cores"));
+        return false;
     }
 }
